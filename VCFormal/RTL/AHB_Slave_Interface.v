@@ -1,15 +1,3 @@
-
-// AHB to APG Bridge | Maven Silicon
-//
-//
-//
-// AHB Slave Interface
-// Date:04-06-2022
-//
-//
-// Modifications: The Combinational part sensitivity list did not inclued Hresetn and hence they gave x output on reset
-
-
 module AHB_slave_interface(Hclk,Hresetn,Hwrite,Hreadyin,Htrans,Haddr,Hwdata,
 			   Prdata,valid,Haddr1,Haddr2,Hwdata1,Hwdata2,Hrdata,Hwritereg,tempselx,Hresp);
 input Hclk,Hresetn;
