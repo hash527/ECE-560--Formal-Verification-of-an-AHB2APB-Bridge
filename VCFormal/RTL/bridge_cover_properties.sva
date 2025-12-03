@@ -1,0 +1,103 @@
+module bridge_cover_properties(
+    input logic        clk,
+    input logic        rst_n,
+
+    // AHB Signals
+    input logic        HSEL,
+    input logic        HREADY,
+    input logic [1:0]  HTRANS,     // 00=IDLE, 10=NONSEQ, etc.
+
+    // APB Signals
+    input logic        PREADY,
+
+    // FSM States
+    input logic [2:0]  ahb_state,  // {IDLE, WAIT} → states encoded in DUT
+    input logic [2:0]  apb_state   // {SETUP, ENABLE, WWAIT} → states encoded in DUT
+);
+
+import APB_FSM_Controller_pkg::*;
+
+// State enum localparams (EDIT to match your DUT encoding)
+    localparam AHB_IDLE = 0;
+    localparam AHB_WAIT = 1;
+
+    localparam APB_SETUP  = 0;
+    localparam APB_ENABLE = 1;
+    localparam APB_WWAIT  = 2;
+
+    //-------------------------------------------
+    // 1) Cover: AHB FSM enters IDLE
+    //-------------------------------------------
+    cover_ahb_idle: cover property (@(posedge bridge_top.Hclk)
+        bridge_top.Hresetn && (ahb_state == AHB_IDLE)
+    );
+
+    //-------------------------------------------
+    // 2) Cover: AHB FSM enters WAIT
+    //-------------------------------------------
+    cover_ahb_wait: cover property (@(posedge bridge_top.Hclk)
+        bridge_top.Hresetn && (ahb_state == AHB_WAIT)
+    );
+
+    //-------------------------------------------
+    // 3) Cover: Transition IDLE → WAIT on a valid NONSEQ transfer
+    //-------------------------------------------
+    cover_ahb_idle_to_wait: cover property (@(posedge bridge_top.Hclk)
+        (ahb_state == AHB_IDLE && HSEL && HREADY && HTRANS == 2'b10)
+        ##1 (ahb_state == AHB_WAIT)
+    );
+
+    //-------------------------------------------
+    // 4) Cover: Transition WAIT → IDLE when the bridge completes the APB cycle
+    //-------------------------------------------
+    cover_ahb_wait_to_idle: cover property (@(posedge bridge_top.Hclk)
+        (ahb_state == AHB_WAIT && PREADY)
+        ##1 (ahb_state == AHB_IDLE)
+    );
+
+    //-------------------------------------------
+    // 5) Cover: APB enters SETUP state
+    //-------------------------------------------
+    cover_apb_setup: cover property (@(posedge bridge_top.Hclk)
+        bridge_top.Hresetn && (apb_state == APB_SETUP)
+    );
+
+    //-------------------------------------------
+    // 6) Cover: APB enters ENABLE state
+    //-------------------------------------------
+    cover_apb_enable: cover property (@(posedge bridge_top.Hclk)
+        bridge_top.Hresetn && (apb_state == APB_ENABLE)
+    );
+
+    //-------------------------------------------
+    // 7) Cover: APB enters WWAIT state (extended wait)
+    //-------------------------------------------
+    cover_apb_wwait: cover property (@(posedge bridge_top.Hclk)
+        bridge_top.Hresetn && (apb_state == APB_WWAIT)
+    );
+
+    //-------------------------------------------
+    // 8) Cover: APB transition SETUP → ENABLE
+    //-------------------------------------------
+    cover_setup_to_enable: cover property (@(posedge bridge_top.Hclk)
+        (apb_state == APB_SETUP)
+        ##1 (apb_state == APB_ENABLE)
+    );
+
+    //-------------------------------------------
+    // 9) Cover: APB transition ENABLE → WWAIT when PREADY stays low
+    //-------------------------------------------
+    cover_enable_to_wwait: cover property (@(posedge bridge_top.Hclk)
+        (apb_state == APB_ENABLE && !PREADY)
+        ##1 (apb_state == APB_WWAIT)
+    );
+
+    //-------------------------------------------
+    // 10) Cover: APB transition WWAIT → ENABLE when PREADY is asserted
+    //-------------------------------------------
+    cover_wwait_to_enable: cover property (@(posedge bridge_top.Hclk)
+        (apb_state == APB_WWAIT && PREADY)
+        ##1 (apb_state == APB_ENABLE)
+    );
+
+endmodule

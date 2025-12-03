@@ -1,0 +1,7 @@
+../RTL/APB_Controller.sv
+../RTL/APB_Interface.sv
+../RTL/AHB_Slave_Interface.sv
+../RTL/AHB_Master.sv
+../RTL/bridge_top.sv
+../RTL/bridge_assertions_assumptions.sv
+../RTL/bridge_bind_file.sv

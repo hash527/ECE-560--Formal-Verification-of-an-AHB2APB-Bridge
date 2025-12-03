@@ -1,0 +1,42 @@
+module bridge_assume_properties;
+
+// Import the STATE typedef from the package
+import APB_FSM_Controller_pkg::*;
+
+//=============================================================================
+// ASSUMPTIONS - Input Constraints for Formal Verification
+//=============================================================================
+
+// ASSUMPTION 1: Htrans valid values (00=IDLE, 10=NONSEQ, 11=SEQ)
+property assume_htrans_valid;
+    @(posedge bridge_top.Hclk) 
+        bridge_top.Htrans inside {2'b00, 2'b10, 2'b11};
+endproperty
+assume_htrans_range: assume property(assume_htrans_valid);
+
+
+// ASSUMPTION 2: Valid address range for bridge
+property assume_haddr_range;
+    @(posedge bridge_top.Hclk) 
+        (bridge_top.Htrans != 2'b00) |-> 
+        (bridge_top.Haddr >= 32'h8000_0000 && bridge_top.Haddr < 32'h8C00_0000);
+endproperty
+assume_address_range: assume property(assume_haddr_range);
+
+// ASSUMPTION 3: Htrans = 10 in first cycle
+property assume_htrans_first_cycle;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        ($past(bridge_top.Htrans) == 2'b00 && bridge_top.Htrans != 2'b00) |-> 
+        (bridge_top.Htrans == 2'b10);
+endproperty
+assume_nonseq_start: assume property(assume_htrans_first_cycle);
+
+// ASSUMPTION 4: Htrans = 00 in second cycle
+property assume_htrans_second_cycle;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        ($past(bridge_top.Htrans) == 2'b10 && $past(bridge_top.Htrans, 2) == 2'b00) |-> 
+        (bridge_top.Htrans == 2'b00);
+endproperty
+assume_idle_after_nonseq: assume property(assume_htrans_second_cycle);
+
+endmodule

@@ -1,0 +1,10 @@
+// AHB to APB Bridge - Bind File for VC Formal
+// Date: 01-31-2025
+// This file connects the assertion module to the design
+
+// Simple bind - no port connections needed
+// The assertion module accesses signals via hierarchical references
+
+bind bridge_top bridge_assertion_properties u_formal_props();
+bind bridge_top bridge_assume_properties u_formal_props1();
+bind bridge_top bridge_cover_properties u_formal_props2();  

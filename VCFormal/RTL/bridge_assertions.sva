@@ -1,0 +1,305 @@
+// AHB to APB Bridge - Formal Verification Assertions
+// Date: 01-31-2025
+// For use with VC Formal (Synopsys Formal Verification)
+
+// This module has NO ports - signals are connected via hierarchical references
+module bridge_assertion_properties;
+
+// Import the STATE typedef from the package
+import APB_FSM_Controller_pkg::*;
+
+//=============================================================================
+// ASSERTION 1: PSELx must be one-hot
+//=============================================================================
+property assert_pselx_onehot;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        $onehot0(bridge_top.Pselx);
+endproperty
+assert_pselx_onehot_encoding: assert property(assert_pselx_onehot);
+
+//=============================================================================
+// ASSERTION 2: Valid signal generation
+//=============================================================================
+property assert_valid_generation;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.Hreadyin && 
+         (bridge_top.Haddr >= 32'h8000_0000 && bridge_top.Haddr < 32'h8C00_0000) && 
+         (bridge_top.Htrans == 2'b10 || bridge_top.Htrans == 2'b11)) |-> 
+         bridge_top.valid;
+endproperty
+assert_valid_signal: assert property(assert_valid_generation);
+
+//=============================================================================
+// ASSERTION 3-5: Peripheral Select Logic
+//=============================================================================
+property assert_tempselx_slave1;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.Haddr >= 32'h8000_0000 && bridge_top.Haddr < 32'h8400_0000) |-> 
+        (bridge_top.tempselx == 3'b001);
+endproperty
+assert_select_slave1: assert property(assert_tempselx_slave1);
+
+property assert_tempselx_slave2;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.Haddr >= 32'h8400_0000 && bridge_top.Haddr < 32'h8800_0000) |-> 
+        (bridge_top.tempselx == 3'b010);
+endproperty
+assert_select_slave2: assert property(assert_tempselx_slave2);
+
+property assert_tempselx_slave3;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.Haddr >= 32'h8800_0000 && bridge_top.Haddr < 32'h8C00_0000) |-> 
+        (bridge_top.tempselx == 3'b100);
+endproperty
+assert_select_slave3: assert property(assert_tempselx_slave3);
+
+//=============================================================================
+// ASSERTION 6-7: AHB Response Signals
+//=============================================================================
+property assert_hrdata_equals_prdata;
+    @(posedge bridge_top.Hclk) 
+        bridge_top.Hrdata == bridge_top.Prdata;
+endproperty
+assert_read_data_passthrough: assert property(assert_hrdata_equals_prdata);
+
+property assert_hresp_okay;
+    @(posedge bridge_top.Hclk) 
+        bridge_top.Hresp == 2'b00;
+endproperty
+assert_response_always_okay: assert property(assert_hresp_okay);
+
+//=============================================================================
+// ASSERTION 8-10: FSM State ST_IDLE Outputs
+//=============================================================================
+property assert_idle_no_valid;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE && !bridge_top.valid) |=> 
+        (bridge_top.Pselx == 3'b000 && bridge_top.Penable == 0 && bridge_top.Hreadyout == 1);
+endproperty
+assert_idle_outputs: assert property(assert_idle_no_valid);
+
+property assert_idle_to_read;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE && bridge_top.valid && !bridge_top.Hwrite) |=>
+        (bridge_top.Paddr == $past(bridge_top.Haddr) && bridge_top.Pwrite == 0 && 
+         bridge_top.Pselx == $past(bridge_top.tempselx) && bridge_top.Penable == 0 && 
+         bridge_top.Hreadyout == 0);
+endproperty
+assert_idle_read_setup: assert property(assert_idle_to_read);
+
+property assert_idle_to_wwait;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE && bridge_top.valid && bridge_top.Hwrite) |=>
+        (bridge_top.Penable == 0 && bridge_top.Pselx == 3'b000 && bridge_top.Hreadyout == 1);
+endproperty
+assert_idle_write_setup: assert property(assert_idle_to_wwait);
+
+//=============================================================================
+// ASSERTION 11-12: FSM State ST_WWAIT Outputs
+//=============================================================================
+property assert_wwait_no_valid;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT && !bridge_top.valid) |=>
+        (bridge_top.Paddr == $past(bridge_top.Haddr1) && bridge_top.Pwrite == 1 && 
+         bridge_top.Pselx == $past(bridge_top.tempselx) && bridge_top.Penable == 0 && 
+         bridge_top.Pwdata == $past(bridge_top.Hwdata) && bridge_top.Hreadyout == 0);
+endproperty
+assert_wwait_to_write: assert property(assert_wwait_no_valid);
+
+property assert_wwait_with_valid;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT && bridge_top.valid) |=>
+        (bridge_top.Paddr == $past(bridge_top.Haddr1) && bridge_top.Pwrite == 1 && 
+         bridge_top.Pselx == $past(bridge_top.tempselx) && bridge_top.Pwdata == $past(bridge_top.Hwdata) && 
+         bridge_top.Penable == 0 && bridge_top.Hreadyout == 0);
+endproperty
+assert_wwait_to_writep: assert property(assert_wwait_with_valid);
+
+//=============================================================================
+// ASSERTION 13: FSM State ST_READ Outputs
+//=============================================================================
+property assert_read_outputs;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_READ) |=> 
+        (bridge_top.Penable == 1 && bridge_top.Hreadyout == 1);
+endproperty
+assert_read_phase: assert property(assert_read_outputs);
+
+//=============================================================================
+// ASSERTION 14: FSM States ST_WRITE and ST_WRITEP Outputs
+//=============================================================================
+property assert_write_outputs;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        ((bridge_top.APBControl.PRESENT_STATE == ST_WRITE) || 
+         (bridge_top.APBControl.PRESENT_STATE == ST_WRITEP)) |=>
+        (bridge_top.Penable == 1 && bridge_top.Hreadyout == 1);
+endproperty
+assert_write_phase: assert property(assert_write_outputs);
+
+//=============================================================================
+// ASSERTION 15: FSM State ST_RENABLE
+//=============================================================================
+property assert_renable_no_valid;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_RENABLE && !bridge_top.valid) |=>
+        (bridge_top.Pselx == 3'b000 && bridge_top.Penable == 0 && bridge_top.Hreadyout == 1);
+endproperty
+assert_renable_idle: assert property(assert_renable_no_valid);
+
+//=============================================================================
+// ASSERTIONS 16-30: FSM State Transitions
+//=============================================================================
+
+// ASSERTION 16
+property assert_idle_to_read_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE && bridge_top.valid && !bridge_top.Hwrite) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_READ);
+endproperty
+assert_transition_idle_read: assert property(assert_idle_to_read_transition);
+
+// ASSERTION 17
+property assert_idle_to_wwait_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE && bridge_top.valid && bridge_top.Hwrite) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT);
+endproperty
+assert_transition_idle_wwait: assert property(assert_idle_to_wwait_transition);
+
+// ASSERTION 18
+property assert_wwait_to_write_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT && !bridge_top.valid) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITE);
+endproperty
+assert_transition_wwait_write: assert property(assert_wwait_to_write_transition);
+
+// ASSERTION 19
+property assert_wwait_to_writep_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT && bridge_top.valid) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITEP);
+endproperty
+assert_transition_wwait_writep: assert property(assert_wwait_to_writep_transition);
+
+// ASSERTION 20
+property assert_read_to_renable_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_READ) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_RENABLE);
+endproperty
+assert_transition_read_renable: assert property(assert_read_to_renable_transition);
+
+// ASSERTION 21
+property assert_write_to_wenable_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITE && !bridge_top.valid) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLE);
+endproperty
+assert_transition_write_wenable: assert property(assert_write_to_wenable_transition);
+
+// ASSERTION 22
+property assert_write_to_wenablep_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITE && bridge_top.valid) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLEP);
+endproperty
+assert_transition_write_wenablep: assert property(assert_write_to_wenablep_transition);
+
+// ASSERTION 23
+property assert_writep_to_wenablep_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITEP) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLEP);
+endproperty
+assert_transition_writep_wenablep: assert property(assert_writep_to_wenablep_transition);
+
+// ASSERTION 24
+property assert_renable_to_idle_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_RENABLE && !bridge_top.valid) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE);
+endproperty
+assert_transition_renable_idle: assert property(assert_renable_to_idle_transition);
+
+// ASSERTION 25
+property assert_renable_to_wwait_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_RENABLE && bridge_top.valid && bridge_top.Hwrite) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT);
+endproperty
+assert_transition_renable_wwait: assert property(assert_renable_to_wwait_transition);
+
+// ASSERTION 26
+property assert_renable_to_read_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_RENABLE && bridge_top.valid && !bridge_top.Hwrite) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_READ);
+endproperty
+assert_transition_renable_read: assert property(assert_renable_to_read_transition);
+
+// ASSERTION 27
+property assert_wenable_to_idle_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLE && !bridge_top.valid && bridge_top.Hwritereg) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_IDLE);
+endproperty
+assert_transition_wenable_idle: assert property(assert_wenable_to_idle_transition);
+
+// ASSERTION 28
+property assert_wenablep_to_write_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLEP && !bridge_top.valid && bridge_top.Hwritereg) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITE);
+endproperty
+assert_transition_wenablep_write: assert property(assert_wenablep_to_write_transition);
+
+// ASSERTION 29
+property assert_wenablep_to_writep_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLEP && bridge_top.valid && bridge_top.Hwritereg) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_WRITEP);
+endproperty
+assert_transition_wenablep_writep: assert property(assert_wenablep_to_writep_transition);
+
+// ASSERTION 30
+property assert_wenablep_to_read_transition;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.APBControl.PRESENT_STATE == ST_WENABLEP && !bridge_top.Hwritereg) |=> 
+        (bridge_top.APBControl.PRESENT_STATE == ST_READ);
+endproperty
+assert_transition_wenablep_read: assert property(assert_wenablep_to_read_transition);
+
+//=============================================================================
+// ASSERTION 31: FSM Valid States Only
+//=============================================================================
+property assert_valid_states;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        bridge_top.APBControl.PRESENT_STATE inside {ST_IDLE, ST_WWAIT, ST_READ, ST_WRITE, 
+                                                      ST_WRITEP, ST_RENABLE, ST_WENABLE, ST_WENABLEP};
+endproperty
+assert_fsm_valid_states: assert property(assert_valid_states);
+
+//=============================================================================
+// ASSERTION 32: Penable Protocol Compliance
+//=============================================================================
+property assert_penable_transfer_phase;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        (bridge_top.Penable == 1) |-> 
+        (bridge_top.APBControl.PRESENT_STATE inside {ST_READ, ST_WRITE, ST_WRITEP, 
+                                                       ST_RENABLE, ST_WENABLE, ST_WENABLEP});
+endproperty
+assert_penable_protocol: assert property(assert_penable_transfer_phase);
+
+//=============================================================================
+// ASSERTION 33: Hreadyout Behavior
+//=============================================================================
+property assert_hreadyout_low_during_transfer_start;
+    @(posedge bridge_top.Hclk) disable iff(!bridge_top.Hresetn)
+        ((bridge_top.APBControl.PRESENT_STATE == ST_IDLE && bridge_top.valid && !bridge_top.Hwrite) ||
+         (bridge_top.APBControl.PRESENT_STATE == ST_WWAIT)) |=> 
+         (bridge_top.Hreadyout == 0);
+endproperty
+assert_hreadyout_timing: assert property(assert_hreadyout_low_during_transfer_start);
+
+endmodule
