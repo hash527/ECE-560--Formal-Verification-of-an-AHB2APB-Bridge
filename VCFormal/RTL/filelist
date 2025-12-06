@@ -3,7 +3,5 @@
 ../RTL/AHB_Slave_Interface.sv
 ../RTL/AHB_Master.sv
 ../RTL/bridge_top.sv
-../RTL/bridge_assertions.sva
-../RTL/bridge_assumptions.sva
-../RTL/bridge_cover_properties.sva
-../RTL/bridge_bind_file.sva
+../RTL/bridge_assertions_assumptions.sv
+../RTL/bridge_bind_file.sv

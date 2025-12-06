@@ -8,3 +8,4 @@
 bind bridge_top bridge_assertion_properties u_formal_props();
 bind bridge_top bridge_assume_properties u_formal_props1();
 bind bridge_top bridge_cover_properties u_formal_props2();  
+bind bridge_top bridge_xprop_assertions u_xprop_props();

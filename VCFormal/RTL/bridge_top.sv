@@ -1,18 +1,18 @@
-// AHB to APB Bridge
+
+// AHB to APG Bridge
 //
 //
 //
 // Bridge Top
-// Date:01-29-2025 
+// Date:01-29-2025
 //
 // By - Lokarjun
 
-// NOTE: For VC Formal, comment out these includes
-// The TCL script will read the files separately
-// `include "../CLASS/APB_Controller.sv"
-// `include "../CLASS/APB_Interface.sv"
-// `include "../CLASS/AHB_Slave_Interface.sv"
-// `include "../CLASS/AHB_Master.sv"
+
+`include "../CLASS/APB_Controller.sv"
+`include "../CLASS/APB_Interface.sv"
+`include "../CLASS/AHB_Slave_Interface.sv"
+`include "../CLASS/AHB_Master.sv"
 
 module bridge_top (
 input logic Hclk,Hresetn,Hwrite,Hreadyin,

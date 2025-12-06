@@ -1,4 +1,3 @@
-
 // AHB to APG Bridge | ECE593 Final Project
 //
 //
@@ -7,6 +6,14 @@
 // Date:01-31-2025
 //
 // By- Harsha Vardhan Duvvuru
+
+// Package to export the typedef for formal verification
+package APB_FSM_Controller_pkg;
+    typedef enum bit[3:0] { 
+        ST_IDLE, ST_WWAIT, ST_READ, ST_WRITE, 
+        ST_WRITEP, ST_RENABLE, ST_WENABLE, ST_WENABLEP
+    } STATE;
+endpackage
 
 module APB_FSM_Controller( 
 	                      input logic Hclk,Hresetn,valid,Hwrite,Hwritereg,
@@ -17,10 +24,7 @@ module APB_FSM_Controller(
                           output logic [2:0] Pselx,
                           output logic [31:0] Paddr,Pwdata);
 
-
-
-typedef enum bit[3:0] { ST_IDLE,ST_WWAIT,ST_READ,ST_WRITE, ST_WRITEP, ST_RENABLE, ST_WENABLE, ST_WENABLEP} STATE;
-
+import APB_FSM_Controller_pkg::*;
 
 STATE PRESENT_STATE,NEXT_STATE;
 
@@ -41,6 +45,7 @@ always_ff @(posedge Hclk)
 
 always_comb
  begin
+
   case (PRESENT_STATE)
     
  	ST_IDLE:begin
@@ -116,6 +121,15 @@ logic [31:0] Paddr_temp, Pwdata_temp;
 
 always_comb
  begin:OUT_COMBINATIONAL_LOGIC
+
+  
+   Penable_temp = 0;
+   Hreadyout_temp = 1;
+   Pwrite_temp = 0;
+   Pselx_temp = 3'b000;
+   Paddr_temp = 32'h0;
+   Pwdata_temp = 32'h0;
+
    case(PRESENT_STATE)
     
 	ST_IDLE: begin
@@ -179,7 +193,7 @@ always_comb
 			   end
 			  
 			  else 
-			   begin:WRITE_TO_WENABLEP ///DOUBT
+			   begin:WRITE_TO_WENABLEP
 				Penable_temp=1;
 				Hreadyout_temp=1;		   
 			   end
@@ -229,7 +243,7 @@ always_comb
 
 			  
 			    else 
-			     begin:WENABLEP_TO_WRITE_OR_READ /////DOUBT
+			     begin:WENABLEP_TO_WRITE_OR_READ
 			      Paddr_temp=Haddr2;
 				  Pwrite_temp=Hwrite;
 				  Pselx_temp=tempselx;
@@ -249,7 +263,7 @@ always_comb
 
 			  
 			    else 
-			     begin:WENABLE_TO_WAIT_OR_READ /////DOUBT
+			     begin:WENABLE_TO_WAIT_OR_READ
 				  Pselx_temp=0;
 				  Penable_temp=0;
 				  Hreadyout_temp=0;		   

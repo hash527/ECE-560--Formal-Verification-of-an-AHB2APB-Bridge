@@ -11,8 +11,8 @@ module bridge_cover_properties(
     input logic        PREADY,
 
     // FSM States
-    input logic [2:0]  ahb_state,  // {IDLE, WAIT} → states encoded in DUT
-    input logic [2:0]  apb_state   // {SETUP, ENABLE, WWAIT} → states encoded in DUT
+    input logic [2:0]  ahb_state,  // {IDLE, WAIT} ? states encoded in DUT
+    input logic [2:0]  apb_state   // {SETUP, ENABLE, WWAIT} ? states encoded in DUT
 );
 
 import APB_FSM_Controller_pkg::*;
@@ -40,7 +40,7 @@ import APB_FSM_Controller_pkg::*;
     );
 
     //-------------------------------------------
-    // 3) Cover: Transition IDLE → WAIT on a valid NONSEQ transfer
+    // 3) Cover: Transition IDLE ? WAIT on a valid NONSEQ transfer
     //-------------------------------------------
     cover_ahb_idle_to_wait: cover property (@(posedge bridge_top.Hclk)
         (ahb_state == AHB_IDLE && HSEL && HREADY && HTRANS == 2'b10)
@@ -48,7 +48,7 @@ import APB_FSM_Controller_pkg::*;
     );
 
     //-------------------------------------------
-    // 4) Cover: Transition WAIT → IDLE when the bridge completes the APB cycle
+    // 4) Cover: Transition WAIT ? IDLE when the bridge completes the APB cycle
     //-------------------------------------------
     cover_ahb_wait_to_idle: cover property (@(posedge bridge_top.Hclk)
         (ahb_state == AHB_WAIT && PREADY)
@@ -77,7 +77,7 @@ import APB_FSM_Controller_pkg::*;
     );
 
     //-------------------------------------------
-    // 8) Cover: APB transition SETUP → ENABLE
+    // 8) Cover: APB transition SETUP ? ENABLE
     //-------------------------------------------
     cover_setup_to_enable: cover property (@(posedge bridge_top.Hclk)
         (apb_state == APB_SETUP)
@@ -85,7 +85,7 @@ import APB_FSM_Controller_pkg::*;
     );
 
     //-------------------------------------------
-    // 9) Cover: APB transition ENABLE → WWAIT when PREADY stays low
+    // 9) Cover: APB transition ENABLE ? WWAIT when PREADY stays low
     //-------------------------------------------
     cover_enable_to_wwait: cover property (@(posedge bridge_top.Hclk)
         (apb_state == APB_ENABLE && !PREADY)
@@ -93,7 +93,7 @@ import APB_FSM_Controller_pkg::*;
     );
 
     //-------------------------------------------
-    // 10) Cover: APB transition WWAIT → ENABLE when PREADY is asserted
+    // 10) Cover: APB transition WWAIT ? ENABLE when PREADY is asserted
     //-------------------------------------------
     cover_wwait_to_enable: cover property (@(posedge bridge_top.Hclk)
         (apb_state == APB_WWAIT && PREADY)

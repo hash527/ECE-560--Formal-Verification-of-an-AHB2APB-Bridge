@@ -70,7 +70,7 @@ module AHB_slave_interface(
 				tempselx=3'b010;
 			else if (Hresetn && Haddr>=32'h8800_0000 && Haddr<32'h8C00_0000)
 				tempselx=3'b100;
-		end
+	end
 	
 
 assign Hrdata = Prdata;
